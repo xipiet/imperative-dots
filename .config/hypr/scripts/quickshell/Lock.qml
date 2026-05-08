@@ -31,9 +31,9 @@ ShellRoot {
     readonly property color green: _theme.green
 
     // Session Settings (Changed from Settings to QtObject to fix the Qt 6.11 initialization error)
+    // hidePassword lives in the Config singleton so it persists across lock sessions.
     QtObject {
         id: lockSettings
-        property bool hidePassword: false
         property int revealDuration: 300
     }
 
@@ -617,7 +617,7 @@ ShellRoot {
                                         if (text !== oldText) {
                                             if (text.length > oldText.length) {
                                                 for (let i = oldText.length; i < text.length; i++) {
-                                                    passModel.append({ "charStr": text.charAt(i), "isDot": lockSettings.hidePassword });
+                                                    passModel.append({ "charStr": text.charAt(i), "isDot": Config.lockHidePassword });
                                                 }
                                             } else if (text.length < oldText.length) {
                                                 let diff = oldText.length - text.length;
@@ -627,7 +627,7 @@ ShellRoot {
                                             } else {
                                                 passModel.clear();
                                                 for (let i = 0; i < text.length; i++) {
-                                                    passModel.append({ "charStr": text.charAt(i), "isDot": lockSettings.hidePassword });
+                                                    passModel.append({ "charStr": text.charAt(i), "isDot": Config.lockHidePassword });
                                                 }
                                             }
                                             oldText = text;
@@ -676,7 +676,7 @@ ShellRoot {
                                                 
                                                 Timer {
                                                     interval: lockSettings.revealDuration
-                                                    running: !model.isDot && !lockSettings.hidePassword
+                                                    running: !model.isDot && !Config.lockHidePassword
                                                     onTriggered: {
                                                         if (index >= 0 && index < passModel.count) {
                                                             passModel.setProperty(index, "isDot", true);
@@ -868,21 +868,23 @@ ShellRoot {
                             
                             Rectangle {
                                 width: 40 * screenRoot.sc; height: 22 * screenRoot.sc; radius: height / 2
-                                color: lockSettings.hidePassword ? root.mauve : root.surface2
+                                color: Config.lockHidePassword ? root.mauve : root.surface2
                                 Behavior on color { ColorAnimation { duration: 250 } }
                                 
                                 Rectangle {
                                     width: height; height: 18 * screenRoot.sc; radius: height / 2
-                                    x: lockSettings.hidePassword ? parent.width - width - (2 * screenRoot.sc) : (2 * screenRoot.sc)
+                                    x: Config.lockHidePassword ? parent.width - width - (2 * screenRoot.sc) : (2 * screenRoot.sc)
                                     y: (parent.height - height) / 2
                                     color: root.base
                                     Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
                                 }
-                                MouseArea { 
-                                    anchors.fill: parent; 
+                                MouseArea {
+                                    anchors.fill: parent;
                                     onClicked: {
-                                        lockSettings.hidePassword = !lockSettings.hidePassword;
-                                        if (lockSettings.hidePassword) {
+                                        let newVal = !Config.lockHidePassword;
+                                        Config.lockHidePassword = newVal;
+                                        Config.setSetting("lockHidePassword", newVal);
+                                        if (newVal) {
                                             for(let i = 0; i < passModel.count; i++) passModel.setProperty(i, "isDot", true);
                                         }
                                     }
@@ -893,7 +895,7 @@ ShellRoot {
                         // Reveal Delay Slider
                         ColumnLayout {
                             Layout.fillWidth: true; Layout.leftMargin: 18 * screenRoot.sc; Layout.rightMargin: 18 * screenRoot.sc; Layout.topMargin: 8 * screenRoot.sc; Layout.bottomMargin: 8 * screenRoot.sc; spacing: 8 * screenRoot.sc
-                            opacity: lockSettings.hidePassword ? 0.3 : 1.0
+                            opacity: Config.lockHidePassword ? 0.3 : 1.0
                             Behavior on opacity { NumberAnimation { duration: 200 } }
                             
                             RowLayout {
@@ -955,7 +957,7 @@ ShellRoot {
                                     id: sliderMouse
                                     anchors.fill: parent
                                     hoverEnabled: true
-                                    enabled: !lockSettings.hidePassword
+                                    enabled: !Config.lockHidePassword
                                     preventStealing: true
                                     
                                     function updateVal(mouseX) {
